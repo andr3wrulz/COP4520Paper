@@ -8,7 +8,7 @@ template <class T>
 class MarkableReference;
 
 template <class T>
-class FRFRNode
+class FRNode
 {
 	public:
 		T data;
