@@ -1,0 +1,55 @@
+% ----- Introduction ------
+\section{Introduction}
+This paper is intended to catalog the implementation and performance of a lock-free linked list as suggested by Fomitchev and Ruppert. An analysis of the performance impact of the changes over several different linked list algorithms is provided as a means of comparison. The suggested implementation has an added layer of complexity with the inclusion of a "backlink" \cite[pg 52]{Fomitchev:2004:LLL:1011767.1011776} in order to eliminate the need for re-traversal when failed Compare and Swap (CAS) calls are made. Being able to recover from these situations should increase the performance in environments that experience higher contention on nodes in the list. 
+
+% ----- Algorithm Explanations ------
+\section{Explanation of Algorithms}
+
+
+\subsection{Linked List Requirements}
+For the purposes of this paper, a linked list algorithm is a list of nodes that have some information and a one-way reference to the next node in the list. To ensure the same functionality for all algorithms the nodes will be organized using a key value and sorted in ascending order. The algorithms must support the following functions:
+\begin{itemize}
+\item Add - Inserts a node into the list in its sorted position, has no effect if a node with that key is already in the list
+\item Remove - Deletes a node from the list, has no effect if specified node is not in the list
+\item Contains - Returns a boolean value that indicates whether the specified node is in the list
+\end{itemize}
+
+\subsection{Single Thread Version}
+\subsubsection{Implementation}
+
+\subsection{Locked Based Versions}
+\subsubsection{Implementation}
+
+\subsection{Harris Multi Thread Version}
+The Harris implementation of the linked list data structure \cite{Harris:2001:PIN:645958.676105}, is similar to the algorithm discussed in class. It uses CAS to ensure the list is updated atomically.
+\subsubsection{Implementation}
+
+\subsection{Fomitchev-Ruppert Version}
+The Fomitchev-Ruppert implementation \cite{Fomitchev:2004:LLL:1011767.1011776} is similar to the Harris implementation in structure but differs in a few parts. In order to implement a "backlink" to the previous node and prevent issues that would occur from using that link naively, the data structure for the node had to be manipulated. The backlink is simply a pointer to the successor of the current node but it is only linked during the removal of the current node to reduce the overhead of other operations as well as limit the number of memory locations that need to manipulated when changing the structure of the list, such as adding or removing nodes.
+
+The main change to the node structure was the addition of the backlink pointer. Before a node is marked for deletion, the backlink is atomically updated to point to the node's predecessor. If another process' CAS fails because the node is marked, it can follow the backlink to predecessor and attempt to recover without having to re-traverse the linked list. The implementation of backlinks does not guarantee performance as long chains of backlinks can occur when many removes are done near one another and that decreases the performance of other operations. Fomitchev and Ruppert suggest using a second flag bit in the node's next pointer. This extra flag bit would be used to indicate that the next node was in the process of being removed. It acts as a warning system for other remove operations to not remove the predecessor to the node being removed to prevent backlink chains.
+
+\subsubsection{Implementation}
+\subsubsection{Correctness}
+
+% ----- Performance Comparisons ------
+\section{Performance Evaluation}
+
+
+% ----- Testing Information ------
+\subsection{Testing Procedures}
+
+\subsection{Testing Results}
+
+\subsection{Analysis of Results}
+
+
+\begin{acks}
+
+The author would like to thank Dr. Damian Dechev of University of Central Florida. His instruction on Parallel Processing was invaluable in the research and implementation of this data structure. 
+
+\end{acks}
+
+% Bibliography
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{bibliography}
