@@ -13,7 +13,7 @@
 #include <atomic>
 #include <climits>
 #include "MarkableReference.hpp"
-#include "Node.hpp"
+#include "FRNode.hpp"
 #include "Window.hpp"
 
 #define FRL_DEBUG false
@@ -26,12 +26,12 @@ template <class T>
 class FRList
 {
 	private:
-		Node<T>* head;
-		Node<T>* tail;
+		FRNode<T>* head;
+		FRNode<T>* tail;
 
 	void PrintList ()
 	{
-		Node<T>* curr = head;
+		FRNode<T>* curr = head;
 
 		printf ("========== Printing List ==========\n");
 		while (curr != NULL)
@@ -41,13 +41,13 @@ class FRList
 		}
 	}
 
-	void HelpMarkedForDeletion (Node<T>* prev, Node<T>* del)
+	void HelpMarkedForDeletion (FRNode<T>* prev, FRNode<T>* del)
 	{
 		if (FRL_DEBUG)
 			printf ("Called HelpMarkedForDeletion (prev [%p], del [%p])\n", prev, del);
 
-		// Attempt to pysically delete the marked node and unflag prev
-		Node<T>* next = del->next.GetReference();
+		// Attempt to pysically delete the marked FRNode and unflag prev
+		FRNode<T>* next = del->next.GetReference();
 
 		if (FRL_DEBUG)
 			printf ("Attempting CAS (exp[%p], success[%p], expSucc %d, successSucc %d, expDel %d, successDel %d\n",
@@ -57,14 +57,14 @@ class FRList
 		prev->next.CompareAndSet (del, next, true, false, false, false);
 	}
 
-	Window<T> SearchFrom (T data, Node<T>* from)
+	Window<T> SearchFrom (T data, FRNode<T>* from)
 	{
 		if (FRL_DEBUG)
 			printf ("Called SearchFrom (%d, [%p])\n", data, from);
 
-		// Find two consecutive node such that n1.key <= t.key < n2
-		Node<T>* curr = from;
-		Node<T>* next = from->next.GetReference ();
+		// Find two consecutive FRNode such that n1.key <= t.key < n2
+		FRNode<T>* curr = from;
+		FRNode<T>* next = from->next.GetReference ();
 		while (next->data <= data)
 		{
 			if (FRL_DEBUG)
@@ -90,7 +90,7 @@ class FRList
 		return w;
 	}
 
-	void HelpSuccessorFlagged (Node<T>* prev, Node<T>* del)
+	void HelpSuccessorFlagged (FRNode<T>* prev, FRNode<T>* del)
 	{
 		if (FRL_DEBUG)
 			printf ("Called HelpSuccessorFlagged ([%p], [%p])\n", prev, del);
@@ -103,7 +103,7 @@ class FRList
 		HelpMarkedForDeletion (prev, del);
 	}
 
-	void TryMarkForDeletion (Node<T>* n)
+	void TryMarkForDeletion (FRNode<T>* n)
 	{
 		if (FRL_DEBUG)
 			printf ("Called TryMarkForDeletion (data %d, addr[%p], next[%p], succ %d, del %d)\n",
@@ -111,8 +111,8 @@ class FRList
 
 		do
 		{
-			// We need the next node so we can update the flag
-			Node<T>* next = n->next.GetReference ();
+			// We need the next FRNode so we can update the flag
+			FRNode<T>* next = n->next.GetReference ();
 
 			if (FRL_DEBUG)
 				printf ("Trying to replace ([%p], %d, %d) with ([%p], %d, %d)\n",
@@ -128,37 +128,37 @@ class FRList
 			printf ("Marked (data %d, [%p]) for deletion\n", n->data, n);
 	}
 
-	bool TryFlagSuccessor (Node<T>* _prev, Node<T>* _target)
+	bool TryFlagSuccessor (FRNode<T>* _prev, FRNode<T>* _target)
 	{
 		if (FRL_DEBUG)
 			printf ("Called TryFlagSuccessor (prev[%p], target[%p])\n", _prev, _target);
 
-		Node<T>* prev = _prev;
-		Node<T>* target = _target;
+		FRNode<T>* prev = _prev;
+		FRNode<T>* target = _target;
 		while (true)
 		{
-			if (prev->next.IsSuccessorMarked())// If the node already has successor flag
+			if (prev->next.IsSuccessorMarked())// If the FRNode already has successor flag
 			{
 				if (FRL_DEBUG)
-					printf ("Target node already had successor flag\n");
+					printf ("Target FRNode already had successor flag\n");
 				return false;
 			}
 
 			if (prev->next.CompareAndSet(target, target, false, true, false, false))// Attempt to assert the successor flag
 			{
 				if (FRL_DEBUG)
-					printf ("Was able to set successor flag on prev node [%p] for target [%p]\n", prev, target);
+					printf ("Was able to set successor flag on prev FRNode [%p] for target [%p]\n", prev, target);
 				return true;// We were successful
 			}
 
-			while (prev->next.IsMarkedForDeletion ())// If the CAS failed because previous node is marked for deletion
+			while (prev->next.IsMarkedForDeletion ())// If the CAS failed because previous FRNode is marked for deletion
 			{
 				if (FRL_DEBUG)
 					printf ("CAS failed because prev was marked for deletion, backtracking\n");
 				prev = prev->backlink;// Go back up the chain one step
 			}
 
-			// Try to reaquire nodes if something moved
+			// Try to reaquire FRNodes if something moved
 			Window<T> w = SearchFrom(target->data, prev);
 
 			if (FRL_DEBUG)
@@ -173,10 +173,10 @@ class FRList
 
 			prev = w.pred;
 
-			if (w.curr != target)// We didn't find our node
+			if (w.curr != target)// We didn't find our FRNode
 			{
 				if (FRL_DEBUG)
-					printf ("Lost target node after backtracking, maybe another node removed it\n");
+					printf ("Lost target FRNode after backtracking, maybe another FRNode removed it\n");
 				return false;
 			}
 		}
@@ -185,8 +185,8 @@ class FRList
 	public:
 		FRList ()
 		{
-			head = new Node<T> (INT_MIN);
-			tail = new Node<T> (INT_MAX);
+			head = new FRNode<T> (INT_MIN);
+			tail = new FRNode<T> (INT_MAX);
 			head->next.Set(tail, false, false);
 			tail->next.Set(NULL, false, false);
 
@@ -197,15 +197,15 @@ class FRList
 			}
 		}
 
-		void Add (Node<T>* n)
+		void Add (FRNode<T>* n)
 		{
 			if (FRL_DEBUG)
 				printf ("Called Add (data %d, addr [%p])\n", n->data, n);
 
-			Node<T>* prev;
-			Node<T>* next;
+			FRNode<T>* prev;
+			FRNode<T>* next;
 
-			// Look for the placement of our new node
+			// Look for the placement of our new FRNode
 			Window<T> w = SearchFrom (n->data, head);
 			prev = w.pred;
 			next = w.curr;
@@ -220,7 +220,7 @@ class FRList
 					w.curr->data, w.curr, w.curr->next.GetReference(), w.curr->next.IsSuccessorMarked(), w.curr->next.IsMarkedForDeletion());
 			}
 
-			// If we find that node already in the list, return
+			// If we find that FRNode already in the list, return
 			if (prev->data == n->data)
 			{
 				if (FRL_DEBUG)
@@ -234,15 +234,15 @@ class FRList
 				{
 					HelpSuccessorFlagged (prev, prev->next.GetReference());
 				} else {
-					// Set the next pointer for the new node to the next node in the list
+					// Set the next pointer for the new FRNode to the next FRNode in the list
 					n->next.Set(next, false, false);
 					
-					// Point prev to our new node instead of next
+					// Point prev to our new FRNode instead of next
 					if (prev->next.CompareAndSet(next, n, false, false, false, false))
 					{
 						if (FRL_DEBUG)
 						{
-							printf ("Successfully added node (data %d, [%p]) into the list\n", n->data, n);
+							printf ("Successfully added FRNode (data %d, [%p]) into the list\n", n->data, n);
 							PrintList ();
 						}
 						return;
@@ -259,12 +259,12 @@ class FRList
 			}
 		}
 
-		Node<T>* Remove (T data)
+		FRNode<T>* Remove (T data)
 		{
 			if (FRL_DEBUG)
 				printf ("Called Remove(%d)\n", data);
 			
-			// Find node we are looking to delete
+			// Find FRNode we are looking to delete
 			Window<T> w = SearchFrom (data - EPSILON, head);// Search for (prev, target) by undershooting
 
 			if (FRL_DEBUG)
@@ -277,7 +277,7 @@ class FRList
 					w.curr->data, w.curr, w.curr->next.GetReference(), w.curr->next.IsSuccessorMarked(), w.curr->next.IsMarkedForDeletion());
 			}
 
-			if (w.curr->data != data)// Node was not found in list
+			if (w.curr->data != data)// FRNode was not found in list
 			{
 				if (FRL_DEBUG)
 					printf ("Couldn't find %d in list to remove\n", data);

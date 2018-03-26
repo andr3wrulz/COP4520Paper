@@ -1,16 +1,16 @@
 #ifndef WINDOW_H
 #define WINDOW_H
 
-#include "Node.hpp"
+#include "FRNode.hpp"
 
 template <class T>
 class Window
 {
 	public:
-		Node<T>* pred;
-		Node<T>* curr;
+		FRNode<T>* pred;
+		FRNode<T>* curr;
 
-		Window (Node<T>* _pred, Node<T>* _curr)
+		Window (FRNode<T>* _pred, FRNode<T>* _curr)
 		{
 			pred = _pred;
 			curr = _curr;

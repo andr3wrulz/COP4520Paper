@@ -4,7 +4,7 @@
 // Toggle for debug printing
 #define MR_DEBUG_FLAG false
 
-#include "Node.hpp"
+#include "FRNode.hpp"
 #include <atomic>
 
 #include <stdio.h>
@@ -19,25 +19,25 @@
 
 // Forward declaration required to avoid circular dependency
 template <class T>
-class Node;
+class FRNode;
 
 template <class T>
 class MarkableReference
 {
 	public:
-		std::atomic<Node<T>*> ptr;
+		std::atomic<FRNode<T>*> ptr;
 
 		MarkableReference () {}
 
-		MarkableReference (Node<T>* _ptr)
+		MarkableReference (FRNode<T>* _ptr)
 		{
 			ptr.store(_ptr);
 		}
 
 		// So it points to a byte aligned address, we need to remove the last two bits
-		Node<T>* GetReference ()
+		FRNode<T>* GetReference ()
 		{
-			return (Node<T>*)((uintptr_t)(ptr.load()) & ~BOTH_BITS);
+			return (FRNode<T>*)((uintptr_t)(ptr.load()) & ~BOTH_BITS);
 		}
 
 		bool IsMarkedForDeletion ()
@@ -50,7 +50,7 @@ class MarkableReference
 			return (uintptr_t)(ptr.load()) & SUCCESSOR_BIT;
 		}
 
-		bool Set (Node<T>* n, bool successorMarked, bool deletionMark)
+		bool Set (FRNode<T>* n, bool successorMarked, bool deletionMark)
 		{
 			if (MR_DEBUG_FLAG)
 			{
@@ -58,7 +58,7 @@ class MarkableReference
 				printf ("\tPointer [%p] | Successor Bit(%p) | Marked Bit (%p)\n", (uintptr_t)(n), ((successorMarked) ? SUCCESSOR_BIT : 0x0), ((deletionMark) ? MARKED_FOR_DELETION_BIT : 0x0));
 			}
 
-			Node<T>* newValue = (Node<T>*)(
+			FRNode<T>* newValue = (FRNode<T>*)(
 				(uintptr_t)(n) |
 				((successorMarked) ? SUCCESSOR_BIT : 0x0) |
 				((deletionMark) ? MARKED_FOR_DELETION_BIT : 0x0));
@@ -69,7 +69,7 @@ class MarkableReference
 			ptr.store (newValue);
 		}
 
-		bool CompareAndSet (Node<T>* expected, Node<T>* success, bool expectedSuccessor, bool successSuccessor,
+		bool CompareAndSet (FRNode<T>* expected, FRNode<T>* success, bool expectedSuccessor, bool successSuccessor,
 							bool expectedDeletionMark, bool successDeletionMark)
 		{
 			if (MR_DEBUG_FLAG)
@@ -78,7 +78,7 @@ class MarkableReference
 					(expectedDeletionMark ? "true" : "false"), (successDeletionMark ? "true" : "false"));
 
 			// Need to apply the indicated flags for the CAS to work
-			Node<T>* modifiedExpected = (Node<T>*)(
+			FRNode<T>* modifiedExpected = (FRNode<T>*)(
 				(uintptr_t)(expected) |
 				((expectedSuccessor) ? SUCCESSOR_BIT : 0x0) |
 				((expectedDeletionMark) ? MARKED_FOR_DELETION_BIT : 0x0));
@@ -87,7 +87,7 @@ class MarkableReference
 				printf ("\tExpected = [%p] | (%p) | (%p)\n",
 					(uintptr_t)(expected), ((expectedSuccessor) ? SUCCESSOR_BIT : 0x0), ((expectedDeletionMark) ? MARKED_FOR_DELETION_BIT : 0x0));
 
-			Node<T>* modifiedSuccess = (Node<T>*)(
+			FRNode<T>* modifiedSuccess = (FRNode<T>*)(
 				(uintptr_t)(success) |
 				((successSuccessor) ? SUCCESSOR_BIT : 0x0) |
 				((successDeletionMark) ? MARKED_FOR_DELETION_BIT : 0x0));

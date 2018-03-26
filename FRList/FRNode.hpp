@@ -1,5 +1,5 @@
-#ifndef NODE_H
-#define NODE_H
+#ifndef FRNode_H
+#define FRNode_H
 
 #include "MarkableReference.hpp"
 
@@ -8,16 +8,16 @@ template <class T>
 class MarkableReference;
 
 template <class T>
-class Node
+class FRFRNode
 {
 	public:
 		T data;
-		std::atomic<Node<T>*> backlink;
+		std::atomic<FRNode<T>*> backlink;
 		MarkableReference<T> next;
 
-		Node () {}
+		FRNode () {}
 
-		Node (T _data) {
+		FRNode (T _data) {
 			data = _data;
 		}
 };
